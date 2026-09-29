@@ -126,13 +126,13 @@ sum(is.na(biosDF))
 #   dplyr::select(-bio07)
 ## divide the observations in the four clusters of correlation analysis
 cl1 <- rbind(native, invasive |> filter(year(eventDate) <= 2008)) |> 
-  mutate(tag = 'cl1') # tag each df
+  mutate(tag = 'Cl1') # tag each df
 cl2 <- rbind(invasive |> filter(year(eventDate) > 2008 & year(eventDate) <= 2015)) |> 
-  mutate(tag = 'cl2') # tag each df
+  mutate(tag = 'Cl2') # tag each df
 cl3 <- rbind(invasive |> filter(year(eventDate) > 2015 & year(eventDate) <= 2018)) |> 
-  mutate(tag = 'cl3') # tag each df
+  mutate(tag = 'Cl3') # tag each df
 cl4 <- rbind(invasive |> filter(year(eventDate) > 2018)) |> 
-  mutate(tag = 'cl4') # tag each df
+  mutate(tag = 'Cl4') # tag each df
 ## subset the occurrences so that we have equal numbers of observations in each clusters
 # nRows <- min(nrow(cl1), nrow(cl2), nrow(cl3), nrow(cl4))
 # set.seed(1312) # maybe repeat multiple times
@@ -176,7 +176,7 @@ percentile <- suppCoords %>%
       Dim.2 >= quantile(Dim.2, 0.25) & Dim.2 <= quantile(Dim.2, 0.75)) |> 
   slice(chull(Dim.1, Dim.2))
 
-pcaPLOT <- fviz_pca_var(pca, col.circle = NA)
+pcaPLOT <- fviz_pca_var(pca, col.circle = NA, labelsize = 6)
 pcaPLOT +
   # geom_polygon(data = percentile, 
   #              aes(x = Dim.1, y = Dim.2, colour = tag), fill = NA) +
@@ -186,10 +186,10 @@ pcaPLOT +
              aes(x = Dim.1, y = Dim.2, colour = tag), alpha = 0.6, shape = 16) +
   geom_point(data = centroids, 
              aes (x = Dim.1, y = Dim.2, fill = tag), size = 7, shape = 23) +
-  scale_color_manual(values = c('cl4' = '#F8766D',
-                                'cl3' = '#7CAE00',
-                                'cl2' = '#00BFC4',
-                                'cl1' = '#C77CFF'),
+  scale_color_manual(values = c('Cl4' = '#F8766D',
+                                'Cl3' = '#7CAE00',
+                                'Cl2' = '#00BFC4',
+                                'Cl1' = '#C77CFF'),
                      # labels = c('cl4' ='2019-2025',
                      #            'cl3' ='2016-2018',
                      #            'cl2' ='2009-2015',
@@ -198,7 +198,9 @@ pcaPLOT +
   guides(colour = guide_legend(override.aes = list(size = 5))) +
   labs(fill = 'Cluster\nCentroids',
        colour = 'Sampled\nOccurrences\n(n = 500)',
-       title = '(A) PCA') +
+       title = '(A) PCA',
+       x = paste0('PC1 (', round(pca$eig[1, 2], 2), '%)'),
+       y = paste0('PC2 (', round(pca$eig[2, 2], 2), '%)')) +
   theme(text = element_text(size = 20),
         legend.key.size = unit(0.8, 'cm'))
 
@@ -221,10 +223,10 @@ clustTraj <- clusteredOccurrences|>
             hurs_sd  = sd(hurs, na.rm = TRUE))
 
 long <- clustTraj |> 
-  mutate(years = case_when(tag == 'cl1' ~ '2002-2008',
-                           tag == 'cl2' ~ '2009-2015',
-                           tag == 'cl3' ~ '2016-2018',
-                           tag == 'cl4' ~ '2019-2025')) |> 
+  mutate(years = case_when(tag == 'Cl1' ~ '2002-2008',
+                           tag == 'Cl2' ~ '2009-2015',
+                           tag == 'Cl3' ~ '2016-2018',
+                           tag == 'Cl4' ~ '2019-2025')) |> 
   pivot_longer(cols = -c(years, tag),
                names_to = c("variable", "stat"),
                names_pattern = "^(.*)_(median|sd)$",
@@ -241,10 +243,10 @@ traj_data <- long |>
 ggplot(data = long, aes(x = tag)) +
   geom_errorbar(aes(ymin = median-sd/2, ymax = median+sd/2), colour = 'darkgrey') +
   geom_point(aes(y = median, colour = years), size = 5) +
-  scale_colour_manual(labels = c('2019-2025' = 'cl4',
-                                 '2016-2018' = 'cl3',
-                                 '2009-2015' = 'cl2',
-                                 '2002-2008' = 'cl1'),
+  scale_colour_manual(labels = c('2019-2025' = 'Cl4',
+                                 '2016-2018' = 'Cl3',
+                                 '2009-2015' = 'Cl2',
+                                 '2002-2008' = 'Cl1'),
                       values = c('2019-2025' = '#F8766D',
                                  '2016-2018' = '#7CAE00',
                                  '2009-2015' = '#00BFC4',

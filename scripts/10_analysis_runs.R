@@ -546,10 +546,10 @@ x_grid_df <- allRcCombined |>
 # 2. Interpolate y values onto the standardized x-grid
 yearlyRc_interpolated <- yearlyRc |> 
   mutate(tag = case_when(
-    year <= 2008 ~ 'cl1',
-    year <= 2015 ~ 'cl2',
-    year <= 2018 ~ 'cl3',
-    TRUE         ~ 'cl4'
+    year <= 2008 ~ 'Cl1',
+    year <= 2015 ~ 'Cl2',
+    year <= 2018 ~ 'Cl3',
+    TRUE         ~ 'Cl4'
   )) |> 
   nest(data = -c(mod, year, tag, var)) |> 
   inner_join(x_grid_df, by = "var", relationship = "many-to-many") |> 
@@ -572,31 +572,32 @@ ggplot(data = yearlyRcCLUST) +
                   ymin = y_mean-y_sd/2, ymax = y_mean+y_sd/2, 
                   fill = tag), alpha = 0.3) +
   geom_line(aes(x = x, y = y_mean, colour = tag)) +
-  scale_fill_manual(values = c('cl4' = '#F8766D',
-                               'cl3' = '#7CAE00',
-                               'cl2' = '#00BFC4',
-                               'cl1' = '#C77CFF'),
+  scale_fill_manual(values = c('Cl4' = '#F8766D',
+                               'Cl3' = '#7CAE00',
+                               'Cl2' = '#00BFC4',
+                               'Cl1' = '#C77CFF'),
                     # labels = c('cl4' = '2019-2025',
                     #            'cl3' = '2016-2018',
                     #            'cl2' = '2009-2015',
                     #            'cl1' = '2002-2008')
                     ) +
-  scale_colour_manual(values = c('cl4' = '#F8766D',
-                                 'cl3' = '#7CAE00',
-                                 'cl2' = '#00BFC4',
-                                 'cl1' = '#C77CFF'),
+  scale_colour_manual(values = c('Cl4' = '#F8766D',
+                                 'Cl3' = '#7CAE00',
+                                 'Cl2' = '#00BFC4',
+                                 'Cl1' = '#C77CFF'),
                       # labels = c('cl4' = '2019-2025',
                       #            'cl3' = '2016-2018',
                       #            'cl2' = '2009-2015',
                       #            'cl1' = '2002-2008')
                       ) +
-  facet_wrap(~var, scale = 'free') +
+  facet_grid(tag~var, scales = 'free_x') +
   labs(title = 'Partial Dependence Plots',
        x = 'Variable',
        y = 'Prediction',
        colour = 'Clusters',
        fill = 'Clusters') +
   theme_bw() +
-  theme(strip.background = element_blank(),strip.text = element_text(hjust = 0),
-        text = element_text(size = 20),
-        legend.position = c(1-0.3/2,0.5/2))
+  theme(strip.background = element_blank(),
+        text = element_text(size = 20))
+# ,
+#         legend.position = c(1-0.3/2,0.5/2))
