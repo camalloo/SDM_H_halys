@@ -4,6 +4,7 @@
 
 library(terra)
 library(tidyverse)
+library(tidyterra)
 library(predicts)
 library(FactoMineR)
 library(factoextra)
@@ -177,7 +178,7 @@ percentile <- suppCoords %>%
   slice(chull(Dim.1, Dim.2))
 
 pcaPLOT <- fviz_pca_var(pca, col.circle = NA, labelsize = 6)
-pcaPLOT +
+pcaPLOT <- pcaPLOT +
   # geom_polygon(data = percentile, 
   #              aes(x = Dim.1, y = Dim.2, colour = tag), fill = NA) +
   geom_point(data = suppCoords |> 
@@ -203,6 +204,7 @@ pcaPLOT +
        y = paste0('PC2 (', round(pca$eig[2, 2], 2), '%)')) +
   theme(text = element_text(size = 20),
         legend.key.size = unit(0.8, 'cm'))
+pcaPLOT
 
 ## reconstruct the path of the clusters 
 ## by looking at the median value of the biolcims in each cluster of observations
@@ -240,7 +242,7 @@ traj_data <- long |>
   filter(!is.na(xend)) |>
   ungroup()
 
-ggplot(data = long, aes(x = tag)) +
+clustTrajPLOT <- ggplot(data = long, aes(x = tag)) +
   geom_errorbar(aes(ymin = median-sd/2, ymax = median+sd/2), colour = 'darkgrey') +
   geom_point(aes(y = median, colour = years), size = 5) +
   scale_colour_manual(labels = c('2019-2025' = 'Cl4',
@@ -266,49 +268,8 @@ ggplot(data = long, aes(x = tag)) +
   theme(strip.background = element_blank(),strip.text = element_text(hjust = 0),
         text = element_text(size = 20),
         axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+clustTrajPLOT
 
-## plot it
-p <- list()
-for (i in c('bio01', 'bio04', 'bio12', 'bio15', 'hurs')) {
-  
-  col <- paste0(i, '_median')
-  traj_data <- clustTraj |> 
-    mutate(x = tag,
-           xend = lead(tag),
-           y = .data[[col]],
-           yend = lead(.data[[col]])) |> 
-    filter(!is.na(xend))
-  
-  p[[i]] <- ggplot() +
-    geom_boxplot(data = clusteredOccurrences,
-                 aes(x = tag, y = .data[[i]], fill = tag),
-                 outliers = F) +
-    scale_fill_manual(values = c('cl4' = '#F8766D',
-                                 'cl3' = '#7CAE00',
-                                 'cl2' = '#00BFC4',
-                                 'cl1' = '#C77CFF')) +
-    geom_segment(data = traj_data,
-                 aes(x = x, xend = xend, y = y, yend = yend, group = 1, linewidth = 'Trajectory'),
-                 arrow = arrow(length = unit(0.25, 'cm'), 
-                               type = 'closed'), color = 'black') +
-    scale_linewidth_manual(values = c('Trajectory' = 0.5)) +
-    labs(x = 'Clusters',
-         colour = NULL,
-         # fill = NULL,
-         linewidth = NULL) +
-    theme_bw() +
-    theme(text = element_text(size = 20))
-}
-clustTrajPLOTs <- (p[[1]] + p[[2]] + p[[3]] + p[[4]] + p[[5]] + guide_area()) +
-  plot_layout(ncol = 3, nrow = 2, heights = c(1, 1, 1),
-              guides = 'collect', axis_title = 'collect') +
-  plot_annotation(title = '(B) Trajectories across clusters',
-                  theme = theme(plot.title = element_text(size = 20)))
-# clustTrajPLOTs <- wrap_plots(p, ncol = 2) +
-#   plot_layout(guides = 'collect', axes = 'collect') +
-#   plot_annotation(title = 'Trajectories across clusters',
-#                   theme = theme(plot.title = element_text(size = 20)))
-clustTrajPLOTs
 ######### 
 
 
@@ -511,14 +472,21 @@ saturationEns <- mask(saturationEns, saturationMessBinary, inverse = T)
 ## nice plot with all clusters and a single legend
 all_ens <- c(evasionEns, expansionEns,
              consolidationEns, saturationEns)
-titles  <- c('(A) cl1', '(B) cl2', '(C) cl3', '(D) cl4')
-panel(all_ens,
-      nc = 2, nr = 2, main = '', box = TRUE,
-      pax = list(cex.axis = 2), plg = list(cex = 2),
-      fun = function(i) {
-        plot(world, lwd = 0.2, add = TRUE)
-        mtext(titles[i], side = 3, line = -2, font = 1, cex = 1.5, adj = 0)
-      })
+oldNames <- names(all_ens)
+names(all_ens)  <- c('Cl1', 'Cl2', 'Cl3', 'Cl4')
+wd <- ggplot(data = world) +
+  geom_spatraster(data = all_ens) +
+  scale_x_continuous(n.breaks = 4) +
+  scale_y_continuous(n.breaks = 4) +
+  scale_fill_viridis_c(na.value = 'transparent') +
+  geom_spatvector(fill = NA) +
+  facet_wrap(~lyr, nrow = 4) +
+  labs(title = '(A) Global') +
+  theme_minimal() +
+  theme(strip.text = element_text(hjust = 0),
+        text = element_text(size = 20),
+        axis.text = element_text(size = 8))
+wd
 
 ## create strips with zooms on specific areas
 ## North America
@@ -529,22 +497,23 @@ for (i in 1:nlyr(all_ens)) {
   thisE <- all_ens[[i]]
 
   p <- crop(thisE, NorthA)
-  plot(p, main = names(p))
-  plot(world, add = T)
+  # plot(p, main = names(p))
+  # plot(world, add = T)
   NorthAEns <- c(NorthAEns, p)
 }
-titles2  <- c('cl1', 'cl2', 'cl3', 'cl4')
-
-panel(NorthAEns,
-      nc = 4, nr = 1, main = '', box = TRUE,
-      pax = list(cex.axis = 2), plg = list(cex = 2),
-      fun = function(i) {
-        plot(world, lwd = 0.2, add = TRUE)
-        mtext(titles2[i], side = 3, line = -2, font = 1, cex = 1.5, adj = 0.5)
-        if (i == 1) {
-          mtext('(E) North America', side = 2, line = 2, cex = 1.5)
-        }
-      })
+na <- ggplot(data = NorthA) +
+  geom_spatraster(data = NorthAEns) +
+  scale_x_continuous(n.breaks = 4) +
+  scale_y_continuous(n.breaks = 4) +
+  scale_fill_viridis_c(na.value = 'transparent') +
+  geom_spatvector(fill = NA) +
+  facet_wrap(~lyr, nrow = 1) +
+  labs(title = '(B) North America') +
+  theme_minimal() +
+  theme(strip.text = element_text(hjust = 0),
+        text = element_text(size = 20),
+        axis.text = element_text(size = 8))
+na
 
 ## Europe
 Europe <- crop(world, ext(-25,50,30,72))
@@ -554,19 +523,23 @@ for (i in 1:nlyr(all_ens)) {
   thisE <- all_ens[[i]]
   
   p <- crop(thisE, Europe)
-  plot(p, main = names(p))
-  plot(world, add = T)
+  # plot(p, main = names(p))
+  # plot(world, add = T)
   EuropeEns <- c(EuropeEns, p)
 }
-panel(EuropeEns,
-      nc = 4, nr = 1, main = '', box = TRUE,
-      pax = list(cex.axis = 2), plg = list(cex = 2),
-      fun = function(i) {
-        plot(world, lwd = 0.2, add = TRUE)
-        if (i == 1) {
-          mtext('(F) Europe', side = 2, line = 2, cex = 1.5)
-        }
-      })
+eu <- ggplot(data = Europe) +
+  geom_spatraster(data = EuropeEns) +
+  scale_x_continuous(n.breaks = 4) +
+  scale_y_continuous(n.breaks = 4) +
+  scale_fill_viridis_c(na.value = 'transparent') +
+  geom_spatvector(fill = NA) +
+  facet_wrap(~lyr, nrow = 1) +
+  labs(title = '(C) Europe') +
+  theme_minimal() +
+  theme(strip.text = element_text(hjust = 0),
+        text = element_text(size = 20),
+        axis.text = element_text(size = 8))
+eu
 
 ## Native areas (South East Asia)
 SEAsia <- crop(world, ext(65,170,-12,60))
@@ -576,24 +549,28 @@ for (i in 1:nlyr(all_ens)) {
   thisE <- all_ens[[i]]
   
   p <- crop(thisE, SEAsia)
-  plot(p, main = names(p))
-  plot(world, add = T)
+  # plot(p, main = names(p))
+  # plot(world, add = T)
   SEAsiaEns <- c(SEAsiaEns, p)
 }
-panel(SEAsiaEns,
-      nc = 4, nr = 1, main = '', box = TRUE,
-      pax = list(cex.axis = 2), plg = list(cex = 2),
-      fun = function(i) {
-        plot(world, lwd = 0.2, add = TRUE)
-        if (i == 1) {
-          mtext('(G) SE Asia', side = 2, line = 2, cex = 1.5)
-        }
-      })
+sa <- ggplot(data = SEAsia) +
+  geom_spatraster(data = SEAsiaEns) +
+  scale_x_continuous(n.breaks = 4) +
+  scale_y_continuous(n.breaks = 4) +
+  scale_fill_viridis_c(na.value = 'transparent') +
+  geom_spatvector(fill = NA) +
+  facet_wrap(~lyr, nrow = 1) +
+  labs(title = '(D) Southeast Asia') +
+  theme_minimal() +
+  theme(strip.text = element_text(hjust = 0),
+        text = element_text(size = 20),
+        axis.text = element_text(size = 8))
+sa
 
-
-## combine all ensembles in a single map
-singleMap <- max(evasionEns, expansionEns, consolidationEns, saturationEns)
-plot(singleMap)
+## add all plots together with patchwork
+wd/na/eu/sa +
+  plot_layout(guides = 'collect', widths = c(1, 2)) &
+  labs(fill = NULL)
 ######### 
 
 
